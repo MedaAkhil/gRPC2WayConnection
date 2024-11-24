@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>gRPC Chat</title>
+</head>
+<body>
+
+  <script src="https://unpkg.com/@improbable-eng/grpc-web"></script>
+  <script>
+    // Import the gRPC-Web library
+    const { grpc } = window;
+
+    // Load the protobuf
+    const proto = grpc.loadObject({
+      nested: {
+        ChatService: {
+          methods: {
+            Chat: {
+              requestStream: true,
+              responseStream: true
+            }
+          }
+        },
+        ChatMessage: {
+          fields: {
+            user: { type: "string", id: 1 },
+            message: { type: "string", id: 2 }
+          }
+        }
+      }
+    });
+
+    // gRPC client
+    const client = new proto.ChatService("http://localhost:8080", {
+      transport: grpc.CrossBrowserHttpTransport({})
+    });
+
+    let chatStream;
+
+    function sendMessage() {
+      const user = document.getElementById('user').value;
+      const message = document.getElementById('message').value;
+      if (!chatStream) {
+        chatStream = client.Chat();
+        chatStream.on("data", (response) => {
+          const chatDiv = document.getElementById("chat");
+          chatDiv.innerHTML += `<p>${response.user}: ${response.message}</p>`;
+        });
+        chatStream.on("end", () => {
+          console.log("Stream ended");
+        });
+      }
+      chatStream.write({ user, message });
+    }
+  </script>
+  <h1>gRPC Chat</h1>
+  <div>
+    <input id="user" placeholder="Enter your name" />
+    <input id="message" placeholder="Enter a message" />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+  <div id="chat"></div>
+</body>
+</html>
